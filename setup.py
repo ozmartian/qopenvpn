@@ -25,8 +25,11 @@ setup(
     packages=["qopenvpn"],
     package_data={
         "qopenvpn": [
+            "exit.svg",
+            "logs.svg",
             "openvpn.svg",
             "openvpn_disabled.svg",
+            "settings.svg",
             "*.ui",
             "languages/*.qm",
             "languages/*.ts",

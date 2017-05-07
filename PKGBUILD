@@ -10,6 +10,7 @@ license=('GPL3')
 depends=('python-pyqt5' 'openvpn' 'systemd')
 makedepends=('python-setuptools')
 source=(qopenvpn::https://github.com/ozmartian/${pkgname}.git)
+md5sums=('SKIP')
 
 build() {
   cd "${srcdir}/${pkgname}"
