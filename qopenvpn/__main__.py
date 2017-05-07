@@ -1,12 +1,18 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
+# -*- coding: utf-8
 
-import sys, os, subprocess, socket, glob, signal
+import glob
+import os
+import signal
+import socket
+import subprocess
+import sys
+
 from PyQt5 import QtCore, QtGui, QtWidgets
 
 from qopenvpn import stun
-from qopenvpn.ui_qopenvpnsettings import Ui_QOpenVPNSettings
 from qopenvpn.ui_qopenvpnlogviewer import Ui_QOpenVPNLogViewer
-
+from qopenvpn.ui_qopenvpnsettings import Ui_QOpenVPNSettings
 
 # Allow CTRL+C and/or SIGTERM to kill us (PyQt blocks it otherwise)
 signal.signal(signal.SIGINT, signal.SIG_DFL)
@@ -14,8 +20,8 @@ signal.signal(signal.SIGTERM, signal.SIG_DFL)
 
 
 class QOpenVPNSettings(QtWidgets.QDialog, Ui_QOpenVPNSettings):
-    def __init__(self, parent=None):
-        super().__init__(parent)
+    def __init__(self, parent=None, flags=QtCore.Qt.WindowCloseButtonHint):
+        super().__init__(parent, flags)
         self.setupUi(self)
 
         settings = QtCore.QSettings()
@@ -65,6 +71,10 @@ class QOpenVPNSettings(QtWidgets.QDialog, Ui_QOpenVPNSettings):
         if i > -1:
             self.vpnNameComboBox.setCurrentIndex(i)
 
+        # force dialog to open centered on currently active screen
+        self.setGeometry(QtWidgets.QStyle.alignedRect(QtCore.Qt.LeftToRight, QtCore.Qt.AlignCenter, self.size(),
+                                                      QtWidgets.qApp.desktop().availableGeometry()))
+
     def accept(self):
         settings = QtCore.QSettings()
         settings.setValue("sudo_command", self.sudoCommandEdit.text())
@@ -78,8 +88,13 @@ class QOpenVPNLogViewer(QtWidgets.QDialog, Ui_QOpenVPNLogViewer):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setupUi(self)
+        self.refreshButton.setIcon(self.style().standardIcon(QtWidgets.QStyle.SP_BrowserReload))
         self.refreshButton.clicked.connect(self.refresh)
         self.refresh()
+
+        # force dialog to open centered on currently active screen
+        self.setGeometry(QtWidgets.QStyle.alignedRect(QtCore.Qt.LeftToRight, QtCore.Qt.AlignCenter, self.size(),
+                                                      QtWidgets.qApp.desktop().availableGeometry()))
 
     def journalctl(self, disable_sudo=False):
         """Run journalctl command and get OpenVPN logs"""
@@ -131,9 +146,12 @@ class QOpenVPNWidget(QtWidgets.QWidget):
         super().__init__(parent)
         self.vpn_enabled = False
 
+        self.trayIcon = QtWidgets.QSystemTrayIcon(self)
+        self.trayIconMenu = QtWidgets.QMenu(self)
+
+        self.create_icon()
         self.create_actions()
         self.create_menu()
-        self.create_icon()
         self.update_status()
 
         # Update status every 10 seconds
@@ -148,20 +166,19 @@ class QOpenVPNWidget(QtWidgets.QWidget):
 
     def create_actions(self):
         """Create actions and connect relevant signals"""
-        self.startAction = QtWidgets.QAction(self.tr("&Start"), self)
+        self.startAction = QtWidgets.QAction(self.iconActive, self.tr("&Start"), self)
         self.startAction.triggered.connect(self.vpn_start)
-        self.stopAction = QtWidgets.QAction(self.tr("S&top"), self)
+        self.stopAction = QtWidgets.QAction(self.iconDisabled, self.tr("S&top"), self)
         self.stopAction.triggered.connect(self.vpn_stop)
-        self.settingsAction = QtWidgets.QAction(self.tr("S&ettings ..."), self)
+        self.settingsAction = QtWidgets.QAction(self.iconSettings, self.tr("S&ettings..."), self)
         self.settingsAction.triggered.connect(self.settings)
-        self.logsAction = QtWidgets.QAction(self.tr("Show &logs ..."), self)
+        self.logsAction = QtWidgets.QAction(self.iconLogs, self.tr("View &logs"), self)
         self.logsAction.triggered.connect(self.logs)
-        self.quitAction = QtWidgets.QAction(self.tr("&Quit"), self)
+        self.quitAction = QtWidgets.QAction(self.iconQuit, self.tr("&Quit"), self)
         self.quitAction.triggered.connect(self.quit)
 
     def create_menu(self):
         """Create menu and add items to it"""
-        self.trayIconMenu = QtWidgets.QMenu(self)
         self.trayIconMenu.addAction(self.startAction)
         self.trayIconMenu.addAction(self.stopAction)
         self.trayIconMenu.addSeparator()
@@ -179,7 +196,13 @@ class QOpenVPNWidget(QtWidgets.QWidget):
         self.iconActive = QtGui.QIcon(self.iconActive.pixmap(128, 128))
         self.iconDisabled = QtGui.QIcon(self.iconDisabled.pixmap(128, 128))
 
-        self.trayIcon = QtWidgets.QSystemTrayIcon(self)
+        self.iconSettings = QtGui.QIcon("{}/settings.svg".format(os.path.dirname(os.path.abspath(__file__))))
+        self.iconSettings = QtGui.QIcon(self.iconSettings.pixmap(32, 32))
+        self.iconLogs = QtGui.QIcon("{}/logs.svg".format(os.path.dirname(os.path.abspath(__file__))))
+        self.iconLogs = QtGui.QIcon(self.iconLogs.pixmap(32, 32))
+        self.iconQuit = QtGui.QIcon("{}/exit.svg".format(os.path.dirname(os.path.abspath(__file__))))
+        self.iconQuit = QtGui.QIcon(self.iconQuit.pixmap(32, 32))
+
         self.trayIcon.activated.connect(self.icon_activated)
         self.trayIcon.setContextMenu(self.trayIconMenu)
         self.trayIcon.setIcon(self.iconDisabled)
@@ -192,11 +215,13 @@ class QOpenVPNWidget(QtWidgets.QWidget):
         vpn_status = self.vpn_status()
         if vpn_status:
             self.trayIcon.setIcon(self.iconActive)
+            self.trayIcon.setToolTip('CONNECTED')
             self.startAction.setEnabled(False)
             self.stopAction.setEnabled(True)
             self.vpn_enabled = True
         else:
             self.trayIcon.setIcon(self.iconDisabled)
+            self.trayIcon.setToolTip('DISCONNECTED')
             self.startAction.setEnabled(True)
             self.stopAction.setEnabled(False)
 
@@ -284,7 +309,7 @@ def main():
     app.setOrganizationDomain("qopenvpn.eutopia.cz")
     app.setApplicationName("QOpenVPN")
     app.setQuitOnLastWindowClosed(False)
-    window = QOpenVPNWidget()
+    w = QOpenVPNWidget()
     sys.exit(app.exec_())
 
 

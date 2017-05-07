@@ -12,12 +12,10 @@ MAPPED_ADDRESS = 0x0001
 FAMILY_IPV4 = 0x01
 
 STUN_SERVERS = [
-    ("stun.l.google.com", 19302),
-    ("stun1.l.google.com", 19302),
-    ("stun2.l.google.com", 19302),
-    ("stun3.l.google.com", 19302),
-    ("stun4.l.google.com", 19302),
-    ("stun.iptel.org", 3478)
+    ("stun.iptel.org", 3478),
+    ("stun.sipgate.net", 3478),
+    ("stun.stunprotocol.org", 3478),
+    ("stun.counterpath.net", 3478)
 ]
 
 
