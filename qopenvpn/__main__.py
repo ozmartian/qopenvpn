@@ -7,7 +7,6 @@ import signal
 import socket
 import subprocess
 import sys
-from distutils.spawn import find_executable
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
@@ -153,6 +152,8 @@ class QOpenVPNWidget(QtWidgets.QWidget):
         # intialize D-Bus notification daemon
         notify.init(QtWidgets.qApp.applicationName(), mainloop='qt')
 
+        self.imgpath = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'images')
+
         self.trayIcon = QtWidgets.QSystemTrayIcon(self)
         self.trayIconMenu = QtWidgets.QMenu(self)
 
@@ -199,17 +200,16 @@ class QOpenVPNWidget(QtWidgets.QWidget):
 
     def create_icon(self):
         """Create system tray icon"""
-        imgpath = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'images')
         # Workaround for Plasma 5 not showing SVG icons
-        self.iconActive = QtGui.QIcon("{}/openvpn.svg".format(imgpath))
+        self.iconActive = QtGui.QIcon("{}/openvpn.svg".format(self.imgpath))
         self.iconActive = QtGui.QIcon(self.iconActive.pixmap(128, 128))
-        self.iconDisabled = QtGui.QIcon("{}/openvpn_disabled.svg".format(imgpath))
+        self.iconDisabled = QtGui.QIcon("{}/openvpn_disabled.svg".format(self.imgpath))
         self.iconDisabled = QtGui.QIcon(self.iconDisabled.pixmap(128, 128))
-        self.iconSettings = QtGui.QIcon("{}/settings.svg".format(imgpath))
+        self.iconSettings = QtGui.QIcon("{}/settings.svg".format(self.imgpath))
         self.iconSettings = QtGui.QIcon(self.iconSettings.pixmap(32, 32))
-        self.iconLogs = QtGui.QIcon("{}/logs.svg".format(imgpath))
+        self.iconLogs = QtGui.QIcon("{}/logs.svg".format(self.imgpath))
         self.iconLogs = QtGui.QIcon(self.iconLogs.pixmap(32, 32))
-        self.iconQuit = QtGui.QIcon("{}/exit.svg".format(imgpath))
+        self.iconQuit = QtGui.QIcon("{}/exit.svg".format(self.imgpath))
         self.iconQuit = QtGui.QIcon(self.iconQuit.pixmap(32, 32))
         self.trayIcon.activated.connect(self.icon_activated)
         self.trayIcon.setContextMenu(self.trayIconMenu)
@@ -255,6 +255,8 @@ class QOpenVPNWidget(QtWidgets.QWidget):
         """Start OpenVPN service"""
         settings = QtCore.QSettings()
         retcode = self.systemctl("start")
+        self.notify('QOpenVPN', 'Connecting to %s' % settings.value("vpn_name"),
+                    "{}/openvpn.svg".format(self.imgpath))
         if settings.value("show_log", False, type=bool):
             self.logs()
         if retcode == 0:
@@ -263,7 +265,10 @@ class QOpenVPNWidget(QtWidgets.QWidget):
 
     def vpn_stop(self):
         """Stop OpenVPN service"""
+        settings = QtCore.QSettings()
         retcode = self.systemctl("stop")
+        self.notify('QOpenVPN', 'Disconnecting from %s' % settings.value("vpn_name"),
+                    "{}/openvpn.svg".format(self.imgpath))
         if retcode == 0:
             self.connected = None
             self.update_status(disable_warning=True)
@@ -280,7 +285,8 @@ class QOpenVPNWidget(QtWidgets.QWidget):
             self.vpn_stop()
             self.vpn_start()
 
-    def notify(self, title, msg=None, icon=None, urgency=1):
+    @staticmethod
+    def notify(title, msg, icon='', urgency=1):
         notification = notify.Notification(title, msg, icon)
         notification.set_urgency(urgency)
         return notification.show()
