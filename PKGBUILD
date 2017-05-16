@@ -2,7 +2,7 @@
 # Modified: Pete Alexandrou (ozmartian) <pete@ozmartians.com>
 pkgname=qopenvpn
 pkgver=2.0.0
-pkgrel=2
+pkgrel=1
 pkgdesc="Simple OpenVPN GUI written in PyQt for systemd based distributions"
 arch=('any')
 license=('GPL3')
