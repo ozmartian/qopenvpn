@@ -268,7 +268,7 @@ class QOpenVPNWidget(QtWidgets.QWidget):
         settings = QtCore.QSettings()
         retcode = self.systemctl("stop")
         self.notify('QOpenVPN', 'Disconnecting from %s' % settings.value("vpn_name"),
-                    "{}/openvpn.svg".format(self.imgpath))
+                    "{}/openvpn_disabled.svg".format(self.imgpath))
         if retcode == 0:
             self.connected = None
             self.update_status(disable_warning=True)
