@@ -102,7 +102,7 @@ class QOpenVPNWidget(QtWidgets.QDialog):
             self.trayIcon.setIcon(self.iconActive)
             tooltip = 'CONNECTED'
             if self.connected is not None:
-                tooltip += '<font size="-1">since %s</font>' % self.connected
+                tooltip += '<br/><font size="-1">since %s</font>' % self.connected
             self.trayIcon.setToolTip(tooltip)
             self.startAction.setVisible(False)
             self.stopAction.setVisible(True)
