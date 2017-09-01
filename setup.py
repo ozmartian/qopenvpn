@@ -1,16 +1,8 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
+# -*- coding: utf-8
 
 from setuptools import setup
 from qopenvpn.version import __version__
-
-setup_cmdclass = {}
-
-# Allow compilation of Qt .qrc, .ui and .ts files (build_qt command)
-try:
-    from setup_qt import build_qt
-    setup_cmdclass['build_qt'] = build_qt
-except ImportError:
-    pass
 
 
 setup(
@@ -36,11 +28,7 @@ setup(
         ("share/applications", ["qopenvpn.desktop"]),
         ("share/pixmaps", ["qopenvpn.png"]),
     ],
-    entry_points={
-        "gui_scripts": [
-            "qopenvpn=qopenvpn.__main__:main",
-        ],
-    },
+    entry_points={"gui_scripts": ["qopenvpn=qopenvpn.__main__:main"],},
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Environment :: X11 Applications :: Qt",
@@ -52,12 +40,5 @@ setup(
         "Programming Language :: Python :: 3",
         "Topic :: Security :: Cryptography",
         "Topic :: System :: Networking",
-    ],
-    options={
-        'build_qt': {
-            'packages': ['qopenvpn'],
-            'languages': ['cs'],
-        },
-    },
-    cmdclass=setup_cmdclass,
+    ]
 )

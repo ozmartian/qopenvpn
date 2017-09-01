@@ -4,7 +4,10 @@ Based on stun.py from https://github.com/myers/html5_udp_to_server,
 but heavily simplified (dropped Twisted dependency, only supports old RFC 3489)
 """
 
-import os, socket, struct, math
+import math
+import os
+import socket
+import struct
 
 BINDING_REQUEST = 0x0001
 BINDING_RESPONSE = 0x0101
@@ -21,6 +24,7 @@ STUN_SERVERS = [
 
 class StunClient(object):
     """Simple STUN client for getting external IP address"""
+
     def __init__(self, timeout=5, attempts=3):
         self._timeout = timeout
         self._attempts = attempts
@@ -73,12 +77,13 @@ class StunClient(object):
         """Generate Binding Request"""
         self._transaction_id = self._generate_id()
         request = [struct.pack(">H", BINDING_REQUEST),  # Message Type
-                   struct.pack(">H", 0),                # Message Length
+                   struct.pack(">H", 0),  # Message Length
                    self._transaction_id]
         return b"".join(request)
 
     def _parse_response(self, data):
         """Parse server response to get mapped address"""
+        ip_address, port = '', ''
         packet_type, length = struct.unpack(">2H", data[:4])
         if packet_type != BINDING_RESPONSE:
             raise ValueError("Invalid response type!")
@@ -91,7 +96,7 @@ class StunClient(object):
                 ip_address, port = self._parse_mapped_address(value)
                 break
 
-        return (ip_address, port)
+        return ip_address, port
 
     def _parse_attributes(self, data):
         """Generator which walks through response attributes"""
@@ -113,6 +118,4 @@ class StunClient(object):
 
 if __name__ == "__main__":
     stun = StunClient()
-    ext_address, ext_port = stun.get_ip()
-    print("External IP: {}".format(ext_address))
-    print("External port: {}".format(ext_port))
+    print("External address: %s:%s" % stun.get_ip())
