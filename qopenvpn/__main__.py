@@ -135,14 +135,12 @@ class QOpenVPNWidget(QtWidgets.QDialog):
         """Run systemctl command"""
         settings = QtCore.QSettings()
         cmdline = []
-        if not disable_sudo and settings.value("use_sudo", type=bool):
-            cmdline.append(settings.value("sudo_command") or "sudo")
+        if not disable_sudo:
+            cmdline.append(settings.value("sudo_command"))
         cmdline.extend([
             "systemctl", command,
             "{}@{}".format(settings.value("service_name"), settings.value("vpn_name"))
         ])
-        # stdout = stderr = subprocess.DEVNULL if quiet else None
-        # return subprocess.call(cmdline, stdout=stdout, stderr=stderr)
         return self.cmdexec(cmdline)
 
     def vpn_start(self):

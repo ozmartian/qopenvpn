@@ -17,8 +17,6 @@ class QOpenVPNSettings(QtWidgets.QDialog, Ui_QOpenVPNSettings):
         self.setupUi(self)
 
         settings = QtCore.QSettings()
-        self.sudoCommandEdit.setText(settings.value("sudo_command") or "kdesu")
-        self.sudoCheckBox.setChecked(settings.value("use_sudo", False, type=bool))
         self.warningCheckBox.setChecked(settings.value("show_warning", False, type=bool))
         self.showlogCheckBox.setChecked(settings.value("show_log", False, type=bool))
 
@@ -64,15 +62,17 @@ class QOpenVPNSettings(QtWidgets.QDialog, Ui_QOpenVPNSettings):
         if i > -1:
             self.vpnNameComboBox.setCurrentIndex(i)
 
+        self.sudoCommandComboBox.addItems(['kdesu', 'kdesudo', 'gksu', 'sudo'])
+        self.sudoCommandComboBox.setCurrentText(settings.value("sudo_command"))
+
         # force dialog to open centered on currently active screen
         self.setGeometry(QtWidgets.QStyle.alignedRect(QtCore.Qt.LeftToRight, QtCore.Qt.AlignCenter, self.size(),
                                                       QtWidgets.qApp.desktop().availableGeometry()))
 
     def accept(self):
         settings = QtCore.QSettings()
-        settings.setValue("sudo_command", self.sudoCommandEdit.text())
-        settings.setValue("use_sudo", self.sudoCheckBox.isChecked())
-        settings.setValue("show_warning", self.warningCheckBox.isChecked())
         settings.setValue("vpn_name", self.vpnNameComboBox.currentText())
         settings.setValue("show_log", self.showlogCheckBox.isChecked())
+        settings.setValue("show_warning", self.warningCheckBox.isChecked())
+        settings.setValue("sudo_command", self.sudoCommandComboBox.currentText())
         QtWidgets.QDialog.accept(self)
