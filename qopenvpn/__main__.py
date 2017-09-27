@@ -22,6 +22,8 @@ class QOpenVPNWidget(QtWidgets.QDialog):
         self.vpn_enabled = False
         self.connected = None
 
+        self.settings = QtCore.QSettings()
+
         # intialize D-Bus notification daemon
         notify.init(QtWidgets.qApp.applicationName())
 
@@ -49,6 +51,9 @@ class QOpenVPNWidget(QtWidgets.QDialog):
         self.icon_doubleclick_timer.setSingleShot(True)
         self.icon_doubleclick_timer.timeout.connect(self.icon_doubleclick_timeout)
 
+        if self.settings.value("auto_connect", type=bool):
+            self.startAction.trigger()
+
         self.setMouseTracking(True)
         self.installEventFilter(self)
 
@@ -59,7 +64,7 @@ class QOpenVPNWidget(QtWidgets.QDialog):
         self.stopAction = QtWidgets.QAction(self.iconDisabled, self.tr("S&top"), self)
         self.stopAction.triggered.connect(self.vpn_stop)
         self.settingsAction = QtWidgets.QAction(self.iconSettings, self.tr("S&ettings..."), self)
-        self.settingsAction.triggered.connect(self.settings)
+        self.settingsAction.triggered.connect(self.show_settings)
         self.logsAction = QtWidgets.QAction(self.iconLogs, self.tr("View &logs"), self)
         self.logsAction.triggered.connect(self.logs)
         self.quitAction = QtWidgets.QAction(self.iconQuit, self.tr("&Quit"), self)
@@ -96,7 +101,6 @@ class QOpenVPNWidget(QtWidgets.QDialog):
 
     def update_status(self, disable_warning=False):
         """Update GUI according to OpenVPN status"""
-        settings = QtCore.QSettings()
         vpn_status = self.vpn_status()
         if vpn_status:
             self.trayIcon.setIcon(self.iconActive)
@@ -113,7 +117,7 @@ class QOpenVPNWidget(QtWidgets.QDialog):
             self.startAction.setVisible(True)
             self.stopAction.setVisible(False)
 
-            if not disable_warning and settings.value("show_warning", type=bool) and self.vpn_enabled:
+            if not disable_warning and self.settings.value("show_warning", type=bool) and self.vpn_enabled:
                 QtWidgets.QMessageBox.warning(self, self.tr("QOpenVPN - Warning"), self.tr("OpenVPN was disconnected!"))
             self.vpn_enabled = False
 
@@ -133,23 +137,21 @@ class QOpenVPNWidget(QtWidgets.QDialog):
 
     def systemctl(self, command, disable_sudo=False):
         """Run systemctl command"""
-        settings = QtCore.QSettings()
         cmdline = []
         if not disable_sudo:
-            cmdline.append(settings.value("sudo_command"))
+            cmdline.append(self.settings.value("sudo_command"))
         cmdline.extend([
             "systemctl", command,
-            "{}@{}".format(settings.value("service_name"), settings.value("vpn_name"))
+            "{}@{}".format(self.settings.value("service_name"), self.settings.value("vpn_name"))
         ])
         return self.cmdexec(cmdline)
 
     def vpn_start(self):
         """Start OpenVPN service"""
-        settings = QtCore.QSettings()
         retcode = self.systemctl("start")
-        self.notify('QOpenVPN', 'Connecting to %s' % settings.value("vpn_name"),
+        self.notify('QOpenVPN', 'Connecting to %s' % self.settings.value("vpn_name"),
                     "{}/openvpn.svg".format(self.imgpath))
-        if settings.value("show_log", False, type=bool):
+        if self.settings.value("show_log", False, type=bool):
             self.logs()
         if retcode == 0:
             self.connected = QtCore.QTime().currentTime().toString('HH:mm')
@@ -157,9 +159,8 @@ class QOpenVPNWidget(QtWidgets.QDialog):
 
     def vpn_stop(self):
         """Stop OpenVPN service"""
-        settings = QtCore.QSettings()
         retcode = self.systemctl("stop")
-        self.notify('QOpenVPN', 'Disconnected from %s' % settings.value("vpn_name"),
+        self.notify('QOpenVPN', 'Disconnected from %s' % self.settings.value("vpn_name"),
                     "{}/openvpn_disabled.svg".format(self.imgpath))
         if retcode == 0:
             self.connected = None
@@ -170,8 +171,8 @@ class QOpenVPNWidget(QtWidgets.QDialog):
         retcode = self.systemctl("is-active", disable_sudo=True)
         return retcode == 0
 
-    def settings(self):
-        """Show settings dialog"""
+    def show_settings(self):
+        """Show show_settings dialog"""
         dialog = QOpenVPNSettings(self)
         if dialog.exec_() and self.vpn_enabled:
             self.vpn_stop()

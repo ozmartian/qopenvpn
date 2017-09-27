@@ -16,7 +16,23 @@ class QOpenVPNSettings(QtWidgets.QDialog, Ui_QOpenVPNSettings):
         self.parent = parent
         self.setupUi(self)
 
+        self.setStyleSheet('''
+            QComboBox, QComboBox:on {
+              background: #838383;
+              color: #FFF;
+            }
+            QComboBox:on {
+              background: #838383;
+            }
+            QComboBox QAbstractItemView {
+              border: 1px solid #838383;
+              selection-background-color: #EAEAEA;
+              selection-color: #000;
+            }
+            ''')
+
         settings = QtCore.QSettings()
+        self.autoconnectCheckBox.setChecked(settings.value("auto_connect", False, type=bool))
         self.warningCheckBox.setChecked(settings.value("show_warning", False, type=bool))
         self.showlogCheckBox.setChecked(settings.value("show_log", False, type=bool))
 
@@ -72,6 +88,7 @@ class QOpenVPNSettings(QtWidgets.QDialog, Ui_QOpenVPNSettings):
     def accept(self):
         settings = QtCore.QSettings()
         settings.setValue("vpn_name", self.vpnNameComboBox.currentText())
+        settings.setValue("auto_connect", self.autoconnectCheckBox.isChecked())
         settings.setValue("show_log", self.showlogCheckBox.isChecked())
         settings.setValue("show_warning", self.warningCheckBox.isChecked())
         settings.setValue("sudo_command", self.sudoCommandComboBox.currentText())
