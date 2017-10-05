@@ -105,8 +105,9 @@ class QOpenVPNWidget(QtWidgets.QDialog):
         if vpn_status:
             self.trayIcon.setIcon(self.iconActive)
             tooltip = 'CONNECTED'
+            tooltip += '<br/><font size="-1">to <b>{}</b></font>'.format(self.settings.value("vpn_name"))
             if self.connected is not None:
-                tooltip += '<br/><font size="-1">since %s</font>' % self.connected
+                tooltip += '<br/><font size="-1">since {}</font>'.format(self.connected)
             self.trayIcon.setToolTip(tooltip)
             self.startAction.setVisible(False)
             self.stopAction.setVisible(True)
@@ -154,7 +155,7 @@ class QOpenVPNWidget(QtWidgets.QDialog):
         if self.settings.value("show_log", False, type=bool):
             self.logs()
         if retcode == 0:
-            self.connected = QtCore.QTime().currentTime().toString('HH:mm')
+            self.connected = QtCore.QTime().currentTime().toString('HH:mm:ss')
             self.update_status()
 
     def vpn_stop(self):
