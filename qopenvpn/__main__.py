@@ -51,7 +51,7 @@ class QOpenVPNWidget(QtWidgets.QDialog):
         self.icon_doubleclick_timer.setSingleShot(True)
         self.icon_doubleclick_timer.timeout.connect(self.icon_doubleclick_timeout)
 
-        if self.settings.value("auto_connect", type=bool):
+        if not self.vpn_enabled and self.settings.value("auto_connect", type=bool):
             self.startAction.trigger()
 
         self.setMouseTracking(True)
