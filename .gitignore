@@ -8,3 +8,7 @@ MANIFEST
 .idea
 .directory
 src/
+archlinux/pkg
+archlinux/src
+archlinux/*.pkg.tar.xz
+archlinux/*.tar.gz

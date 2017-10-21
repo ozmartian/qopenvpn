@@ -21,6 +21,7 @@ class Ui_QOpenVPNSettings(object):
         self.vpnNameComboBox = QtWidgets.QComboBox(QOpenVPNSettings)
         self.vpnNameComboBox.setObjectName("vpnNameComboBox")
         self.vpnNameComboBox.setCursor(QtCore.Qt.PointingHandCursor)
+        self.vpnNameComboBox.setMaxVisibleItems(6)
         topLayout.addWidget(self.vpnNameComboBox)
         self.autoconnectCheckBox = QtWidgets.QCheckBox(QOpenVPNSettings)
         self.autoconnectCheckBox.setObjectName("autoconnectCheckBox")
