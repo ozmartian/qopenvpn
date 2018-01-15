@@ -1,0 +1,5 @@
+#!/bin/bash
+
+OPENVPN_COUNT=$(systemctl list-units --state=active openvpn* | tail -2 | head -1 | cut -f1 -d' ')
+
+[ ${OPENVPN_COUNT} > 0 ] && (qopenvpn &> /dev/null &)

@@ -30,6 +30,7 @@ class QOpenVPNWidget(QtWidgets.QDialog):
         self.proc = QtCore.QProcess()
         self.proc.setProcessEnvironment(QtCore.QProcessEnvironment.systemEnvironment())
         self.proc.setProcessChannelMode(QtCore.QProcess.MergedChannels)
+        self.proc.finished.connect(self.cmdexec_callback)
 
         self.imgpath = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'images')
 
@@ -125,7 +126,7 @@ class QOpenVPNWidget(QtWidgets.QDialog):
     def cmdexec(self, command, output=False):
         if self.proc.state() == QtCore.QProcess.NotRunning:
             self.proc.start(' '.join(command))
-            self.proc.waitForFinished(-1)
+
             if self.proc.exitStatus() == QtCore.QProcess.NormalExit:
                 if output:
                     cmdout = str(self.proc.readAllStandardOutput().data(), 'utf-8')
@@ -135,6 +136,10 @@ class QOpenVPNWidget(QtWidgets.QDialog):
             else:
                 return 1, self.proc.errorString()
         return 1
+
+    @QtCore.pyqtSlot(int, QtCore.QProcess.ExitStatus)
+    def cmdexec_callback(self, exitcode: int, exitstatus: QtCore.QProcess.ExitStatus):
+        if exitcode == 0 and exitstatus == QtCore.QProcess.NormalExit:
 
     def systemctl(self, command, disable_sudo=False):
         """Run systemctl command"""
@@ -239,6 +244,7 @@ def main():
     # noinspection PyUnusedLocal
     w = QOpenVPNWidget()
     sys.exit(app.exec_())
+
 
 if __name__ == "__main__":
     main()

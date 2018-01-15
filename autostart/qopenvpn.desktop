@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=QOpenVPN Checker
+Icon=qopenvpn
+Exec=qopenvpn-checker
+Terminal=false
+Type=Application
+Categories=KDE;Qt;Network;
+StartupNotify=false
