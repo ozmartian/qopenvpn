@@ -1,0 +1,17 @@
+pkgbase = qopenvpn
+	pkgdesc = Simple OpenVPN GUI written in PySide2 for systemd based distributions
+	pkgver = 2.0.0
+	pkgrel = 1
+	url = https://github.com/xmikos/qopenvpn
+	arch = any
+	license = GPL3
+	makedepends = python-setuptools
+	depends = python-pyside2-git
+	depends = openvpn
+	depends = systemd
+	provides = qopenvpn
+	source = https://github.com/ozmartian/qopenvpn/archive/master.tar.gz
+	md5sums = SKIP
+
+pkgname = qopenvpn
+
