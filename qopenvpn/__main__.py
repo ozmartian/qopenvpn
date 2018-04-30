@@ -20,17 +20,14 @@ class QOpenVPNWidget(QtWidgets.QDialog):
     def __init__(self, parent=None):
         super(QOpenVPNWidget, self).__init__(parent)
         self.vpn_enabled = False
+        self.vpn_changed = False
+        self.first_run = True
         self.connected = None
 
         self.settings = QtCore.QSettings()
 
         # intialize D-Bus notification daemon
         notify.init(QtWidgets.qApp.applicationName())
-
-        self.proc = QtCore.QProcess()
-        self.proc.setProcessEnvironment(QtCore.QProcessEnvironment.systemEnvironment())
-        self.proc.setProcessChannelMode(QtCore.QProcess.MergedChannels)
-        self.proc.finished.connect(self.cmdexec_callback)
 
         self.imgpath = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'images')
 
@@ -40,11 +37,11 @@ class QOpenVPNWidget(QtWidgets.QDialog):
         self.create_icon()
         self.create_actions()
         self.create_menu()
-        self.update_status()
+        self.vpn_status()
 
         # Update status every 10 seconds
         self.timer = QtCore.QTimer(self)
-        self.timer.timeout.connect(self.update_status)
+        self.timer.timeout.connect(self.vpn_status)
         self.timer.start(5000)
 
         # Setup system tray icon doubleclick timer
@@ -52,14 +49,11 @@ class QOpenVPNWidget(QtWidgets.QDialog):
         self.icon_doubleclick_timer.setSingleShot(True)
         self.icon_doubleclick_timer.timeout.connect(self.icon_doubleclick_timeout)
 
-        if not self.vpn_enabled and self.settings.value("auto_connect", type=bool):
-            self.startAction.trigger()
-
         self.setMouseTracking(True)
         self.installEventFilter(self)
 
     def create_actions(self):
-        """Create actions and connect relevant signals"""
+        """Create actions and connect relevant pyqtSignals"""
         self.startAction = QtWidgets.QAction(self.iconActive, self.tr("&Start"), self)
         self.startAction.triggered.connect(self.vpn_start)
         self.stopAction = QtWidgets.QAction(self.iconDisabled, self.tr("S&top"), self)
@@ -100,48 +94,18 @@ class QOpenVPNWidget(QtWidgets.QDialog):
         self.trayIcon.setToolTip("QOpenVPN")
         self.trayIcon.show()
 
-    def update_status(self, disable_warning=False):
-        """Update GUI according to OpenVPN status"""
-        vpn_status = self.vpn_status()
-        if vpn_status:
-            self.trayIcon.setIcon(self.iconActive)
-            tooltip = 'CONNECTED'
-            tooltip += '<br/><font size="-1">to <b>{}</b></font>'.format(self.settings.value("vpn_name"))
-            if self.connected is not None:
-                tooltip += '<br/><font size="-1">since {}</font>'.format(self.connected)
-            self.trayIcon.setToolTip(tooltip)
-            self.startAction.setVisible(False)
-            self.stopAction.setVisible(True)
-            self.vpn_enabled = True
-        else:
-            self.trayIcon.setIcon(self.iconDisabled)
-            self.trayIcon.setToolTip('DISCONNECTED')
-            self.startAction.setVisible(True)
-            self.stopAction.setVisible(False)
-
-            if not disable_warning and self.settings.value("show_warning", type=bool) and self.vpn_enabled:
-                QtWidgets.QMessageBox.warning(self, self.tr("QOpenVPN - Warning"), self.tr("OpenVPN was disconnected!"))
-            self.vpn_enabled = False
-
-    def cmdexec(self, command, output=False):
+    def cmdexec(self, command, callback, disable_warning=False):
+        self.proc = QtCore.QProcess(self)
+        self.proc.setProcessEnvironment(QtCore.QProcessEnvironment.systemEnvironment())
+        self.proc.setProcessChannelMode(QtCore.QProcess.MergedChannels)
         if self.proc.state() == QtCore.QProcess.NotRunning:
+            if disable_warning:
+                self.proc.finished.connect(lambda code, status: callback(code, status, disable_warning))
+            else:
+                self.proc.finished.connect(callback)
             self.proc.start(' '.join(command))
 
-            if self.proc.exitStatus() == QtCore.QProcess.NormalExit:
-                if output:
-                    cmdout = str(self.proc.readAllStandardOutput().data(), 'utf-8')
-                    return self.proc.exitCode(), cmdout
-                else:
-                    return self.proc.exitCode()
-            else:
-                return 1, self.proc.errorString()
-        return 1
-
-    @QtCore.pyqtSlot(int, QtCore.QProcess.ExitStatus)
-    def cmdexec_callback(self, exitcode: int, exitstatus: QtCore.QProcess.ExitStatus):
-        if exitcode == 0 and exitstatus == QtCore.QProcess.NormalExit:
-
-    def systemctl(self, command, disable_sudo=False):
+    def systemctl(self, command, callback, disable_sudo=False, disable_warning=False):
         """Run systemctl command"""
         cmdline = []
         if not disable_sudo:
@@ -150,39 +114,74 @@ class QOpenVPNWidget(QtWidgets.QDialog):
             "systemctl", command,
             "{}@{}".format(self.settings.value("service_name"), self.settings.value("vpn_name"))
         ])
-        return self.cmdexec(cmdline)
+        self.cmdexec(cmdline, callback, disable_warning)
 
     def vpn_start(self):
         """Start OpenVPN service"""
-        retcode = self.systemctl("start")
-        self.notify('QOpenVPN', 'Connecting to %s' % self.settings.value("vpn_name"),
-                    "{}/openvpn.svg".format(self.imgpath))
-        if self.settings.value("show_log", False, type=bool):
-            self.logs()
-        if retcode == 0:
-            self.connected = QtCore.QTime().currentTime().toString('HH:mm:ss')
-            self.update_status()
+        self.systemctl("start", self.on_vpn_start)
+
+    @QtCore.pyqtSlot(int, QtCore.QProcess.ExitStatus)
+    def on_vpn_start(self, exitcode, exitstatus):
+        if exitstatus == QtCore.QProcess.NormalExit:
+            self.notify('QOpenVPN', 'Connecting to %s' % self.settings.value("vpn_name"),
+                        "{}/openvpn.svg".format(self.imgpath))
+            if self.settings.value("show_log", False, type=bool):
+                self.logs()
+            if exitcode == 0:
+                self.connected = QtCore.QTime().currentTime().toString('HH:mm:ss')
+                self.vpn_status()
 
     def vpn_stop(self):
         """Stop OpenVPN service"""
-        retcode = self.systemctl("stop")
-        self.notify('QOpenVPN', 'Disconnected from %s' % self.settings.value("vpn_name"),
-                    "{}/openvpn_disabled.svg".format(self.imgpath))
-        if retcode == 0:
-            self.connected = None
-            self.update_status(disable_warning=True)
+        self.systemctl("stop", self.on_vpn_stop)
 
-    def vpn_status(self):
+    @QtCore.pyqtSlot(int, QtCore.QProcess.ExitStatus)
+    def on_vpn_stop(self, exitcode, exitstatus):
+        if exitstatus == QtCore.QProcess.NormalExit:
+            self.notify('QOpenVPN', 'Disconnected from %s' % self.settings.value("vpn_name"),
+                        "{}/openvpn_disabled.svg".format(self.imgpath))
+            if exitcode == 0:
+                self.connected = None
+                self.vpn_status(disable_warning=True)
+
+    def vpn_status(self, disable_warning=False):
         """Check if OpenVPN service is running"""
-        retcode = self.systemctl("is-active", disable_sudo=True)
-        return retcode == 0
+        self.systemctl("is-active", self.on_vpn_status, disable_sudo=True, disable_warning=disable_warning)
+
+    @QtCore.pyqtSlot(int, QtCore.QProcess.ExitStatus)
+    @QtCore.pyqtSlot(int, QtCore.QProcess.ExitStatus, bool)
+    def on_vpn_status(self, exitcode, exitstatus, disable_warning=False):
+        if exitstatus == QtCore.QProcess.NormalExit:
+            if exitcode == 0:
+                self.trayIcon.setIcon(self.iconActive)
+                tooltip = 'CONNECTED'
+                tooltip += '<br/><font size="-1">to <b>{}</b></font>'.format(self.settings.value("vpn_name"))
+                if self.connected is not None:
+                    tooltip += '<br/><font size="-1">since {}</font>'.format(self.connected)
+                self.trayIcon.setToolTip(tooltip)
+                self.startAction.setVisible(False)
+                self.stopAction.setVisible(True)
+                self.vpn_enabled = True
+            else:
+                self.trayIcon.setIcon(self.iconDisabled)
+                self.trayIcon.setToolTip('DISCONNECTED')
+                self.startAction.setVisible(True)
+                self.stopAction.setVisible(False)
+                if not disable_warning and bool(self.settings.value("show_warning")) and self.vpn_enabled:
+                    QtWidgets.QMessageBox.warning(self, self.tr("Warning"), self.tr("OpenVPN was disconnected!"))
+                self.vpn_enabled = False
+        if self.first_run and not self.vpn_enabled and self.settings.value("auto_connect", type=bool):
+            self.startAction.trigger()
+        self.first_run = False
 
     def show_settings(self):
         """Show show_settings dialog"""
         dialog = QOpenVPNSettings(self)
-        if dialog.exec_() and self.vpn_enabled:
-            self.vpn_stop()
-            self.vpn_start()
+        if dialog.exec_():
+            if self.vpn_changed and self.vpn_enabled:
+                self.vpn_stop()
+                self.vpn_start()
+                self.vpn_changed = False
 
     @staticmethod
     def notify(title, msg, icon='', urgency=1):
@@ -191,14 +190,8 @@ class QOpenVPNWidget(QtWidgets.QDialog):
         return notification.show()
 
     def logs(self):
-        """Show log viewer dialog"""
-        logsThread = QtCore.QThread(self)
-        logsWorker = QOpenVPNLogViewer()
-        logsWorker.moveToThread(logsThread)
-        logsThread.started.connect(logsWorker.refresh)
-        logsThread.finished.connect(logsThread.deleteLater, QtCore.Qt.DirectConnection)
-        logsThread.start()
-        logsWorker.exec_()
+        logviewer = QOpenVPNLogViewer(self)
+        logviewer.exec_()
 
     def icon_activated(self, reason):
         """Start or stop OpenVPN by double-click on tray icon"""
