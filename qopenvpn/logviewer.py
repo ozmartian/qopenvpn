@@ -3,7 +3,7 @@
 
 import socket
 
-from PyQt5 import QtCore, QtWidgets
+from PySide2 import QtCore, QtWidgets
 
 from qopenvpn import stun
 from qopenvpn.ui_qopenvpnlogviewer import Ui_QOpenVPNLogViewer
@@ -54,13 +54,13 @@ class QOpenVPNLogViewer(QtWidgets.QDialog, Ui_QOpenVPNLogViewer):
             hostname = ""
         return ip, hostname
 
-    @QtCore.pyqtSlot()
+    @QtCore.Slot()
     def refresh(self):
         """Refresh logs"""
         self.journalctl(True)
         QtCore.QTimer.singleShot(0, self.refresh_timeout)
 
-    @QtCore.pyqtSlot(int, QtCore.QProcess.ExitStatus)
+    @QtCore.Slot(int, QtCore.QProcess.ExitStatus)
     def update_journal(self, exitcode, exitstatus):
         if exitcode == 0 and exitstatus == QtCore.QProcess.NormalExit:
             cmdout = self.proc.readAllStandardOutput().data().decode().strip()

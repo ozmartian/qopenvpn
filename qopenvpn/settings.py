@@ -6,7 +6,7 @@ import os
 import subprocess
 import sys
 
-from PyQt5 import QtCore, QtWidgets
+from PySide2 import QtCore, QtWidgets
 
 from qopenvpn.ui_qopenvpnsettings import Ui_QOpenVPNSettings
 
@@ -32,9 +32,9 @@ class QOpenVPNSettings(QtWidgets.QDialog, Ui_QOpenVPNSettings):
             ''')
 
         settings = QtCore.QSettings()
-        self.autoconnectCheckBox.setChecked(settings.value("auto_connect", False, type=bool))
-        self.warningCheckBox.setChecked(settings.value("show_warning", False, type=bool))
-        self.showlogCheckBox.setChecked(settings.value("show_log", False, type=bool))
+        self.autoconnectCheckBox.setChecked(settings.value("auto_connect", False) == 'true')
+        self.warningCheckBox.setChecked(settings.value("show_warning", False) == 'true')
+        self.showlogCheckBox.setChecked(settings.value("show_log", False) == 'true')
 
         # Checks for the new location of OpenVPN configuration files introduced in OpenVPN 2.4
         # See https://github.com/OpenVPN/openvpn/blob/master/Changes.rst#user-visible-changes
@@ -42,7 +42,8 @@ class QOpenVPNSettings(QtWidgets.QDialog, Ui_QOpenVPNSettings):
         # /etc/openvpn/client/ directories (depending on unit file)."
         # Remove this unaesthetic version check when openvpn 2.4 is widely accepcted
         try:
-            output = subprocess.run(["openvpn", "--version"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT).stdout
+            output = subprocess.run(["openvpn", "--version"], stdout=subprocess.PIPE,
+                                    stderr=subprocess.STDOUT).stdout
         except OSError:
             print("An installation of OpenVPN could not be found on your machine!", file=sys.stderr)
             output = ""

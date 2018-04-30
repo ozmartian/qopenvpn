@@ -4,8 +4,9 @@
 import os
 import signal
 import sys
+from functools import partial
 
-from PyQt5 import QtCore, QtGui, QtWidgets
+from PySide2 import QtCore, QtGui, QtWidgets
 
 from qopenvpn import notify
 from qopenvpn.logviewer import QOpenVPNLogViewer
@@ -99,10 +100,7 @@ class QOpenVPNWidget(QtWidgets.QDialog):
         self.proc.setProcessEnvironment(QtCore.QProcessEnvironment.systemEnvironment())
         self.proc.setProcessChannelMode(QtCore.QProcess.MergedChannels)
         if self.proc.state() == QtCore.QProcess.NotRunning:
-            if disable_warning:
-                self.proc.finished.connect(lambda code, status: callback(code, status, disable_warning))
-            else:
-                self.proc.finished.connect(callback)
+            self.proc.finished.connect(partial(callback, disable_warning))
             self.proc.start(' '.join(command))
 
     def systemctl(self, command, callback, disable_sudo=False, disable_warning=False):
@@ -120,7 +118,7 @@ class QOpenVPNWidget(QtWidgets.QDialog):
         """Start OpenVPN service"""
         self.systemctl("start", self.on_vpn_start)
 
-    @QtCore.pyqtSlot(int, QtCore.QProcess.ExitStatus)
+    @QtCore.Slot(int, QtCore.QProcess.ExitStatus)
     def on_vpn_start(self, exitcode, exitstatus):
         if exitstatus == QtCore.QProcess.NormalExit:
             self.notify('QOpenVPN', 'Connecting to %s' % self.settings.value("vpn_name"),
@@ -135,7 +133,7 @@ class QOpenVPNWidget(QtWidgets.QDialog):
         """Stop OpenVPN service"""
         self.systemctl("stop", self.on_vpn_stop)
 
-    @QtCore.pyqtSlot(int, QtCore.QProcess.ExitStatus)
+    @QtCore.Slot(int, QtCore.QProcess.ExitStatus)
     def on_vpn_stop(self, exitcode, exitstatus):
         if exitstatus == QtCore.QProcess.NormalExit:
             self.notify('QOpenVPN', 'Disconnected from %s' % self.settings.value("vpn_name"),
@@ -148,8 +146,7 @@ class QOpenVPNWidget(QtWidgets.QDialog):
         """Check if OpenVPN service is running"""
         self.systemctl("is-active", self.on_vpn_status, disable_sudo=True, disable_warning=disable_warning)
 
-    @QtCore.pyqtSlot(int, QtCore.QProcess.ExitStatus)
-    @QtCore.pyqtSlot(int, QtCore.QProcess.ExitStatus, bool)
+    @QtCore.Slot(int, QtCore.QProcess.ExitStatus, bool)
     def on_vpn_status(self, exitcode, exitstatus, disable_warning=False):
         if exitstatus == QtCore.QProcess.NormalExit:
             if exitcode == 0:
@@ -168,6 +165,7 @@ class QOpenVPNWidget(QtWidgets.QDialog):
                 self.startAction.setVisible(True)
                 self.stopAction.setVisible(False)
                 if not disable_warning and bool(self.settings.value("show_warning")) and self.vpn_enabled:
+                    self.center()
                     QtWidgets.QMessageBox.warning(self, self.tr("Warning"), self.tr("OpenVPN was disconnected!"))
                 self.vpn_enabled = False
         if self.first_run and not self.vpn_enabled and self.settings.value("auto_connect", type=bool):
@@ -209,13 +207,16 @@ class QOpenVPNWidget(QtWidgets.QDialog):
         """Action performed after single-click on tray icon"""
         pass
 
-    def quit(self):
-        """Quit QOpenVPN GUI (and ask before quitting if OpenVPN is still running)"""
-        # noinspection PyCallByClass
+    def center(self):
         self.setGeometry(QtWidgets.QStyle.alignedRect(QtCore.Qt.LeftToRight, QtCore.Qt.AlignCenter,
                                                       QtWidgets.QMessageBox.sizeHint(self),
                                                       QtWidgets.qApp.desktop().availableGeometry()))
+
+    def quit(self):
+        """Quit QOpenVPN GUI (and ask before quitting if OpenVPN is still running)"""
+        # noinspection PyCallByClass
         if self.vpn_enabled:
+            self.center()
             reply = QtWidgets.QMessageBox.warning(self,
                                                   self.tr("QOpenVPN - Quit"),
                                                   self.tr("You are still connected to VPN! Do you really want to quit "
