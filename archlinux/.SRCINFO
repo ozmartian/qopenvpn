@@ -1,7 +1,7 @@
 pkgbase = qopenvpn
 	pkgdesc = Simple OpenVPN GUI written in PySide2 for systemd based distributions
 	pkgver = 2.0.0
-	pkgrel = 1
+	pkgrel = 2
 	url = https://github.com/xmikos/qopenvpn
 	arch = any
 	license = GPL3

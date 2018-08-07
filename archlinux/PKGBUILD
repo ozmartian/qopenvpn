@@ -2,7 +2,7 @@
 # Modified: Pete Alexandrou (ozmartian) <pete@ozmartians.com>
 pkgname=qopenvpn
 pkgver=2.0.0
-pkgrel=1
+pkgrel=2
 _branch=master
 pkgdesc="Simple OpenVPN GUI written in PySide2 for systemd based distributions"
 arch=('any')
